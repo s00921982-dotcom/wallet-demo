@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+
+<section class="card balance">
+
+<div class="label">
+الرصيد الحالي
+</div>
+
+<div class="money">
+${{"%.2f"|format(balance)}}
+</div>
+
+<div class="lock">
+🔒 رصيد 
+</div>
+
+</section>
+
+
+<section class="card notice">
+
+<h2>
+ⓘ الرصيد 
+</h2>
+
+<p>
+هذا الموقع Demo .
+ أموال حقيقية أو تحويلات مالية.
+</p>
+
+</section>
+
+
+<section class="card">
+
+<h2>
+⭐ السحب 
+</h2>
+
+<p class="muted">
+يمكنك طلب سحب داخل النظام فقط.
+</p>
+
+
+<div class="vip">
+
+<div>
+
+<span>
+VIP Demo
+</span>
+
+<p>
+✓  السحب<br>
+✓ سجل المعاملات<br>
+✓ معالجة 
+</p>
+
+</div>
+
+<div class="gold">
+DEMO
+</div>
+
+</div>
+
+
+<form
+action="/withdraw"
+method="post"
+>
+
+<input
+name="amount"
+type="number"
+min="0.01"
+step="0.01"
+placeholder="مبلغ السحب "
+required
+>
+
+
+<select name="days">
+
+<option value="7">
+قيد المعالجة — 7 أيام
+</option>
+
+<option value="14">
+قيد المعالجة — 14 يوم
+</option>
+
+</select>
+
+
+<button>
+طلب سحب 
+</button>
+
+</form>
+
+</section>
+
+
+<section class="card">
+
+<h2>
+📥 إدخال رمز
+</h2>
+
+<p class="muted">
+أدخل رمز تحويل إذا كان لديك.
+</p>
+
+<a href="/code">
+
+<button>
+إدخال الرمز
+</button>
+
+</a>
+
+</section>
+
+
+<section class="card">
+
+<h2>
+آخر المعاملات
+</h2>
+
+
+{% for x in transactions %}
+
+<div class="tx">
+
+<div class="tx-top">
+
+<b>
+{{ x["kind"] }}
+</b>
+
+<span>
+${{"%.2f"|format(x["amount"])}}
+</span>
+
+</div>
+
+
+<div class="tx-date">
+{{ x["created"] }}
+</div>
+
+
+{% if x["status"] == "pending" %}
+
+<div class="pending">
+⏳ قيد المعالجة — Demo
+</div>
+
+{% else %}
+
+<div class="completed">
+✓ مكتملة — Demo
+</div>
+
+{% endif %}
+
+</div>
+
+
+{% else %}
+
+<p class="muted">
+لا توجد معاملات.
+</p>
+
+{% endfor %}
+
+</section>
+
+
+{% endblock %}

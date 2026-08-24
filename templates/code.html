@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+
+<h2>📥 إدخال رمز Demo</h2>
+
+<p class="muted">
+أدخل الرمز للحصول على رصيد .
+</p>
+
+<form action="/redeem" method="post">
+
+<input
+    type="text"
+    name="code"
+    placeholder="اكتب DEMO100 هنا"
+    autocomplete="off"
+    autocapitalize="characters"
+    spellcheck="false"
+    required
+>
+
+<button type="submit">
+تفعيل الرمز
+</button>
+
+</form>
+
+</section>
+
+{% endblock %}

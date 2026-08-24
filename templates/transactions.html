@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+
+<h2>
+↻ المعاملات
+</h2>
+
+
+{% for x in transactions %}
+
+<div class="tx">
+
+<div class="tx-top">
+
+<b>
+{{ x["kind"] }}
+</b>
+
+<span>
+${{"%.2f"|format(x["amount"])}}
+</span>
+
+</div>
+
+
+<div class="tx-date">
+{{ x["created"] }}
+</div>
+
+
+{% if x["status"] == "pending" %}
+
+<div class="pending">
+⏳ قيد المعالجة — Demo
+</div>
+
+{% else %}
+
+<div class="completed">
+✓ مكتملة — Demo
+</div>
+
+{% endif %}
+
+
+{% if x["complete"] %}
+
+<div class="tx-date">
+موعد الإكمال :
+{{ x["complete"] }}
+</div>
+
+{% endif %}
+
+</div>
+
+
+{% else %}
+
+<p class="muted">
+لا توجد معاملات.
+</p>
+
+{% endfor %}
+
+</section>
+
+{% endblock %}

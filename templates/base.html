@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+
+<html lang="ar" dir="rtl">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width,initial-scale=1">
+
+<title>محفظتي</title>
+
+<link rel="stylesheet"
+href="/static/style.css">
+
+</head>
+
+<body>
+
+<div class="demo">
+DEMO • 
+</div>
+
+
+<header>
+
+<a href="/" class="icon">
+☰
+</a>
+
+<div class="title">
+محفظتي
+</div>
+
+<div class="bell">
+🔔
+</div>
+
+</header>
+
+
+<main>
+
+{% if message %}
+
+<div class="message">
+{{ message }}
+</div>
+
+{% endif %}
+
+
+{% block content %}
+
+{% endblock %}
+
+</main>
+
+
+<nav>
+
+<a href="/account">
+👤
+<small>الحساب</small>
+</a>
+
+<a href="/code">
+📥
+<small>الرمز</small>
+</a>
+
+<a href="/transactions">
+↻
+<small>المعاملات</small>
+</a>
+
+<a href="/">
+💳
+<small>المحفظة</small>
+</a>
+
+</nav>
+
+</body>
+
+</html>
