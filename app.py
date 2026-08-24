@@ -4,11 +4,11 @@ import sqlite3
 import secrets
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(32)
+
+# مفتاح ثابت حتى لا تتغير جلسات المستخدمين عند إعادة تشغيل السيرفر
+app.secret_key = "demo-wallet-secret-change-this"
 
 DB = "wallet.db"
-
-# رمز دولي  — 
 DEMO_CODE = "DEMO100"
 
 
@@ -18,27 +18,30 @@ def db():
     return c
 
 
+def get_user_id():
+    """
+    يعطي كل متصفح/جلسة معرفًا مستقلًا.
+    """
+    if "user_id" not in session:
+        session["user_id"] = secrets.token_hex(16)
+
+    return session["user_id"]
+
+
 def init():
     c = db()
 
     c.execute("""
-        CREATE TABLE IF NOT EXISTS wallet (
-            id INTEGER PRIMARY KEY,
-            balance REAL NOT NULL
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS codes (
-            code TEXT PRIMARY KEY,
-            amount REAL NOT NULL,
-            used INTEGER NOT NULL DEFAULT 0
+        CREATE TABLE IF NOT EXISTS users (
+            user_id TEXT PRIMARY KEY,
+            balance REAL NOT NULL DEFAULT 0
         )
     """)
 
     c.execute("""
         CREATE TABLE IF NOT EXISTS transactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
             kind TEXT NOT NULL,
             amount REAL NOT NULL,
             status TEXT NOT NULL,
@@ -47,27 +50,33 @@ def init():
         )
     """)
 
-    if not c.execute(
-        "SELECT id FROM wallet WHERE id=1"
-    ).fetchone():
-        c.execute(
-            "INSERT INTO wallet(id,balance) VALUES(1,0)"
-        )
-
-    if not c.execute(
-        "SELECT code FROM codes WHERE code=?",
-        (DEMO_CODE,)
-    ).fetchone():
-        c.execute(
-            "INSERT INTO codes(code,amount,used) VALUES(?,?,0)",
-            (DEMO_CODE, 100)
-        )
-
     c.commit()
     c.close()
 
 
-def update_status():
+def ensure_user():
+    user_id = get_user_id()
+
+    c = db()
+
+    user = c.execute(
+        "SELECT user_id FROM users WHERE user_id=?",
+        (user_id,)
+    ).fetchone()
+
+    if not user:
+        c.execute(
+            "INSERT INTO users(user_id,balance) VALUES(?,0)",
+            (user_id,)
+        )
+        c.commit()
+
+    c.close()
+
+    return user_id
+
+
+def update_status(user_id):
     c = db()
 
     now = datetime.now().strftime(
@@ -77,10 +86,11 @@ def update_status():
     c.execute("""
         UPDATE transactions
         SET status='completed'
-        WHERE status='pending'
+        WHERE user_id=?
+        AND status='pending'
         AND complete IS NOT NULL
         AND complete <= ?
-    """, (now,))
+    """, (user_id, now))
 
     c.commit()
     c.close()
@@ -89,22 +99,28 @@ def update_status():
 @app.route("/")
 def home():
 
-    update_status()
+    user_id = ensure_user()
+    update_status(user_id)
 
     c = db()
 
-    balance = c.execute(
-        "SELECT balance FROM wallet WHERE id=1"
-    ).fetchone()["balance"]
+    user = c.execute("""
+        SELECT balance
+        FROM users
+        WHERE user_id=?
+    """, (user_id,)).fetchone()
 
     transactions = c.execute("""
         SELECT *
         FROM transactions
+        WHERE user_id=?
         ORDER BY id DESC
         LIMIT 5
-    """).fetchall()
+    """, (user_id,)).fetchall()
 
     message = session.pop("message", None)
+
+    balance = user["balance"]
 
     c.close()
 
@@ -119,65 +135,75 @@ def home():
 @app.post("/redeem")
 def redeem():
 
+    user_id = ensure_user()
+
     code = request.form.get(
         "code", ""
     ).strip().upper()
 
+    if code != DEMO_CODE:
+
+        session["message"] = (
+            "الكود غير صحيح."
+        )
+
+        return redirect("/")
+
     c = db()
 
-    row = c.execute("""
-        SELECT *
-        FROM codes
-        WHERE code=?
-        AND used=0
-    """, (code,)).fetchone()
+    # كل مستخدم يستطيع استخدام كود Demo مرة واحدة
+    existing = c.execute("""
+        SELECT id
+        FROM transactions
+        WHERE user_id=?
+        AND kind='إضافة رصيد Demo'
+        LIMIT 1
+    """, (user_id,)).fetchone()
 
-    if row:
-
-        c.execute("""
-            UPDATE wallet
-            SET balance=balance+?
-            WHERE id=1
-        """, (row["amount"],))
-
-        c.execute("""
-            UPDATE codes
-            SET used=1
-            WHERE code=?
-        """, (code,))
-
-        c.execute("""
-            INSERT INTO transactions
-            (kind,amount,status,created)
-            VALUES(?,?,?,?)
-        """, (
-            "إضافة رصيد ",
-            row["amount"],
-            "completed",
-            datetime.now().strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
-        ))
-
-        c.commit()
+    if existing:
 
         session["message"] = (
-            "تمت إضافة الرصيد ."
+            "تم استخدام كود DEMO100 لهذا الحساب مسبقًا."
         )
 
-    else:
+        c.close()
+        return redirect("/")
 
-        session["message"] = (
-            "الكود غير صحيح أو تم استخدامه مسبقًا."
+    # إضافة 100$ لهذا المستخدم فقط
+    c.execute("""
+        UPDATE users
+        SET balance = balance + 100
+        WHERE user_id=?
+    """, (user_id,))
+
+    c.execute("""
+        INSERT INTO transactions
+        (user_id, kind, amount, status, created)
+        VALUES (?, ?, ?, ?, ?)
+    """, (
+        user_id,
+        "إضافة رصيد Demo",
+        100,
+        "completed",
+        datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
         )
+    ))
 
+    c.commit()
     c.close()
+
+    session["message"] = (
+        "تمت إضافة 100$ إلى رصيد Demo الخاص بك."
+    )
 
     return redirect("/")
 
 
 @app.post("/withdraw")
 def withdraw():
+
+    user_id = ensure_user()
 
     try:
 
@@ -199,9 +225,13 @@ def withdraw():
 
     c = db()
 
-    balance = c.execute(
-        "SELECT balance FROM wallet WHERE id=1"
-    ).fetchone()["balance"]
+    user = c.execute("""
+        SELECT balance
+        FROM users
+        WHERE user_id=?
+    """, (user_id,)).fetchone()
+
+    balance = user["balance"]
 
     if amount <= 0:
 
@@ -215,7 +245,7 @@ def withdraw():
     if amount > balance:
 
         session["message"] = (
-            "الرصيد  غير كافٍ."
+            "الرصيد غير كافٍ."
         )
 
         c.close()
@@ -237,17 +267,18 @@ def withdraw():
     )
 
     c.execute("""
-        UPDATE wallet
-        SET balance=balance-?
-        WHERE id=1
-    """, (amount,))
+        UPDATE users
+        SET balance = balance - ?
+        WHERE user_id=?
+    """, (amount, user_id))
 
     c.execute("""
         INSERT INTO transactions
-        (kind,amount,status,created,complete)
-        VALUES(?,?,?,?,?)
+        (user_id, kind, amount, status, created, complete)
+        VALUES (?, ?, ?, ?, ?, ?)
     """, (
-        "طلب سحب ",
+        user_id,
+        "طلب سحب Demo",
         amount,
         "pending",
         created.strftime(
@@ -262,7 +293,7 @@ def withdraw():
     c.close()
 
     session["message"] = (
-        "تم إنشاء طلب السحب ."
+        "تم إنشاء طلب السحب Demo."
     )
 
     return redirect("/")
@@ -271,15 +302,18 @@ def withdraw():
 @app.route("/transactions")
 def transactions():
 
-    update_status()
+    user_id = ensure_user()
+
+    update_status(user_id)
 
     c = db()
 
     transactions = c.execute("""
         SELECT *
         FROM transactions
+        WHERE user_id=?
         ORDER BY id DESC
-    """).fetchall()
+    """, (user_id,)).fetchall()
 
     c.close()
 
@@ -292,6 +326,8 @@ def transactions():
 @app.route("/account")
 def account():
 
+    ensure_user()
+
     return render_template(
         "account.html"
     )
@@ -300,16 +336,18 @@ def account():
 @app.route("/code")
 def code_page():
 
+    ensure_user()
+
     return render_template(
         "code.html"
     )
 
 
+# إنشاء الجداول عند تشغيل التطبيق
 init()
 
-if __name__ == "__main__":
 
-    init()
+if __name__ == "__main__":
 
     print("")
     print("==============================")
