@@ -251,3 +251,81 @@ font-size:24px;
 }
 
 }
+
+.login-card{
+    text-align:center;
+    margin-top:35px;
+}
+
+.login-icon{
+    font-size:55px;
+    margin-bottom:10px;
+}
+
+.login-card h2{
+    font-size:28px;
+    margin:10px 0;
+}
+
+.login-card label{
+    display:block;
+    text-align:right;
+    margin-top:15px;
+    color:#c7ced8;
+    font-size:14px;
+}
+
+.login-link{
+    color:#aab3bf;
+    margin-top:20px;
+}
+
+.login-link a{
+    color:#ffc52d;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+.login-link a:hover{
+    text-decoration:underline;
+}
+
+
+.login-card{
+    text-align:center;
+    margin-top:35px;
+}
+
+.login-icon{
+    font-size:55px;
+    margin-bottom:10px;
+}
+
+.login-card h2{
+    font-size:28px;
+    margin:10px 0;
+}
+
+.login-card label{
+    display:block;
+    text-align:right;
+    margin-top:15px;
+    color:#c7ced8;
+    font-size:14px;
+}
+
+.login-link{
+    color:#aab3bf;
+    margin-top:20px;
+}
+
+.login-link a{
+    color:#ffc52d;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+.login-link a:hover{
+    text-decoration:underline;
+}
+

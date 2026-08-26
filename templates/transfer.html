@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+
+    <h2>تحويل رصيد</h2>
+
+    {% if message %}
+        <div class="message">
+            {{ message }}
+        </div>
+    {% endif %}
+
+    <p class="muted">
+        رصيدك الحالي: {{ "%.2f"|format(user.balance) }}
+    </p>
+
+    <form method="post" action="/transfer">
+
+        <label>اسم المستخدم المستلم</label>
+        <input
+            type="text"
+            name="username"
+            required
+            autocomplete="off"
+        >
+
+        <label>المبلغ</label>
+        <input
+            type="number"
+            name="amount"
+            min="0.01"
+            step="0.01"
+            required
+        >
+
+        <button type="submit">
+            تحويل الرصيد
+        </button>
+
+    </form>
+
+    <p class="muted">
+        <a href="/">العودة للرئيسية</a>
+    </p>
+
+</section>
+
+{% endblock %}

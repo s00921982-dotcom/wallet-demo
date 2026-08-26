@@ -276,6 +276,13 @@ def register():
     password = request.form.get("password", "")
     confirm = request.form.get("confirm_password", "")
 
+    print("REGISTER DEBUG:", {
+        "username": username,
+        "password_length": len(password),
+        "confirm_length": len(confirm),
+        "match": password == confirm
+    })
+
     if not username or not password:
         session["message"] = "أدخل جميع البيانات."
         return redirect("/register")
@@ -590,6 +597,146 @@ def transactions():
         "transactions.html",
         transactions=transactions
     )
+
+
+
+# =========================
+# Transfer
+# =========================
+
+@app.route("/transfer", methods=["GET", "POST"])
+def transfer():
+
+    if not logged_in():
+        return redirect("/login")
+
+    sender_id = ensure_user()
+
+    if request.method == "GET":
+        c = db()
+        user = c.execute("""
+            SELECT username, balance
+            FROM users
+            WHERE user_id=?
+        """, (sender_id,)).fetchone()
+        c.close()
+
+        return render_template(
+            "transfer.html",
+            user=user,
+            message=session.pop("message", None)
+        )
+
+    recipient_username = request.form.get(
+        "username", ""
+    ).strip()
+
+    try:
+        amount = float(request.form.get("amount", "0"))
+    except ValueError:
+        amount = 0
+
+    if not recipient_username or amount <= 0:
+        session["message"] = "أدخل اسم المستخدم والمبلغ بشكل صحيح."
+        return redirect("/transfer")
+
+    c = db()
+
+    sender = c.execute("""
+        SELECT user_id, username, balance
+        FROM users
+        WHERE user_id=?
+    """, (sender_id,)).fetchone()
+
+    recipient = c.execute("""
+        SELECT user_id, username
+        FROM users
+        WHERE username=?
+    """, (recipient_username,)).fetchone()
+
+    if not sender:
+        c.close()
+        session["message"] = "الحساب غير موجود."
+        return redirect("/transfer")
+
+    if not recipient:
+        c.close()
+        session["message"] = "المستخدم المستلم غير موجود."
+        return redirect("/transfer")
+
+    if recipient["user_id"] == sender_id:
+        c.close()
+        session["message"] = "لا يمكنك التحويل إلى حسابك."
+        return redirect("/transfer")
+
+    if sender["balance"] < amount:
+        c.close()
+        session["message"] = "الرصيد غير كافٍ."
+        return redirect("/transfer")
+
+    try:
+        c.execute("BEGIN")
+
+        c.execute("""
+            UPDATE users
+            SET balance = balance - ?
+            WHERE user_id=?
+        """, (amount, sender_id))
+
+        c.execute("""
+            UPDATE users
+            SET balance = balance + ?
+            WHERE user_id=?
+        """, (amount, recipient["user_id"]))
+
+        now = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+        c.execute("""
+            INSERT INTO transactions
+            (user_id, kind, amount, status, created, complete, paypal_email)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            sender_id,
+            "transfer_sent",
+            amount,
+            "completed",
+            now,
+            now,
+            recipient["username"]
+        ))
+
+        c.execute("""
+            INSERT INTO transactions
+            (user_id, kind, amount, status, created, complete, paypal_email)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            recipient["user_id"],
+            "transfer_received",
+            amount,
+            "completed",
+            now,
+            now,
+            sender["username"]
+        ))
+
+        c.commit()
+
+    except Exception:
+        c.rollback()
+        c.close()
+        session["message"] = "حدث خطأ أثناء التحويل."
+        return redirect("/transfer")
+
+    c.close()
+
+    session["message"] = (
+        f"تم تحويل {amount:.2f} إلى {recipient['username']} بنجاح."
+    )
+
+    return redirect("/")
+
 
 
 # =========================
