@@ -15,27 +15,36 @@
     <form method="post" action="/register">
 
         <label>اسم المستخدم</label>
+
         <input
             type="text"
             name="username"
+            minlength="3"
             required
             autocomplete="username"
-        >
-
-        <label>البريد الإلكتروني</label>
-        <input
-            type="email"
-            name="email"
-            required
-            autocomplete="email"
+            placeholder="اسم المستخدم"
         >
 
         <label>كلمة المرور</label>
+
         <input
             type="password"
             name="password"
+            minlength="4"
             required
             autocomplete="new-password"
+            placeholder="كلمة المرور"
+        >
+
+        <label>تأكيد كلمة المرور</label>
+
+        <input
+            type="password"
+            name="confirm_password"
+            minlength="4"
+            required
+            autocomplete="new-password"
+            placeholder="أعد كتابة كلمة المرور"
         >
 
         <button type="submit">
