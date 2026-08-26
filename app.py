@@ -75,6 +75,11 @@ def init():
             "ALTER TABLE transactions ADD COLUMN paypal_email TEXT"
         )
 
+    if not column_exists(c, "transactions", "user_id"):
+        c.execute(
+            "ALTER TABLE transactions ADD COLUMN user_id TEXT"
+        )
+
     c.commit()
     c.close()
 
