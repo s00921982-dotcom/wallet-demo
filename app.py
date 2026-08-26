@@ -261,75 +261,45 @@ def login():
 def register():
 
     if request.method == "GET":
-        return render_template("register.html")
-
-    username = request.form.get(
-        "username",
-        ""
-    ).strip()
-
-    password = request.form.get(
-        "password",
-        ""
-    )
-
-    confirm = request.form.get(
-        "confirm_password",
-        ""
-    )
-
-    if not username or not password:
-
-        session["message"] = (
-            "أدخل جميع البيانات."
+        message = session.pop("message", None)
+        return render_template(
+            "register.html",
+            message=message
         )
 
+    username = request.form.get("username", "").strip()
+    password = request.form.get("password", "")
+    confirm = request.form.get("confirm_password", "")
+
+    if not username or not password:
+        session["message"] = "أدخل جميع البيانات."
         return redirect("/register")
 
     if len(username) < 3:
-
-        session["message"] = (
-            "اسم المستخدم يجب أن يكون 3 أحرف على الأقل."
-        )
-
+        session["message"] = "اسم المستخدم يجب أن يكون 3 أحرف على الأقل."
         return redirect("/register")
 
     if len(password) < 4:
-
-        session["message"] = (
-            "كلمة المرور يجب أن تكون 4 أحرف على الأقل."
-        )
-
+        session["message"] = "كلمة المرور يجب أن تكون 4 أحرف على الأقل."
         return redirect("/register")
 
     if password != confirm:
-
-        session["message"] = (
-            "كلمتا المرور غير متطابقتين."
-        )
-
+        session["message"] = "كلمتا المرور غير متطابقتين."
         return redirect("/register")
 
     c = db()
 
-    existing = c.execute("""
-        SELECT user_id
-        FROM users
-        WHERE username=?
-    """, (username,)).fetchone()
+    existing = c.execute(
+        "SELECT user_id FROM users WHERE username=?",
+        (username,)
+    ).fetchone()
 
     if existing:
-
         c.close()
-
-        session["message"] = (
-            "اسم المستخدم مستخدم مسبقًا."
-        )
-
+        session["message"] = "اسم المستخدم مستخدم مسبقًا."
         return redirect("/register")
 
     user_id = secrets.token_hex(16)
-
     password_hash = hash_password(password)
 
     c.execute("""
@@ -345,11 +315,9 @@ def register():
     c.commit()
     c.close()
 
+    session.clear()
     session["user_id"] = user_id
-
-    session["message"] = (
-        "تم إنشاء الحساب بنجاح."
-    )
+    session["message"] = "تم إنشاء الحساب بنجاح."
 
     return redirect("/")
 
