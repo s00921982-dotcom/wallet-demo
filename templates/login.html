@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+
+    <h2>🔐 تسجيل الدخول</h2>
+
+    {% if message %}
+        <div class="message">
+            {{ message }}
+        </div>
+    {% endif %}
+
+    <form action="/login" method="post">
+
+        <label>اسم المستخدم</label>
+
+        <input
+            type="text"
+            name="username"
+            required
+            autocomplete="username"
+        >
+
+        <label>كلمة المرور</label>
+
+        <input
+            type="password"
+            name="password"
+            required
+            autocomplete="current-password"
+        >
+
+        <button type="submit">
+            تسجيل الدخول
+        </button>
+
+    </form>
+
+    <p class="muted">
+        ليس لديك حساب؟
+        <a href="/register">إنشاء حساب</a>
+    </p>
+
+</section>
+
+{% endblock %}
