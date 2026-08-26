@@ -4,29 +4,35 @@
 
 <section class="card">
 
-<h2>📥 إدخال رمز Demo</h2>
+    <h2>🎁 رمز الهدية</h2>
 
-<p class="muted">
-أدخل الرمز للحصول على رصيد .
-</p>
+    <p class="muted">
+        أدخل رمز الهدية للحصول على رصيد Demo.
+    </p>
 
-<form action="/redeem" method="post">
+    {% if message %}
+        <div class="message">
+            {{ message }}
+        </div>
+    {% endif %}
 
-<input
-    type="text"
-    name="code"
-    placeholder="اكتب DEMO100 هنا"
-    autocomplete="off"
-    autocapitalize="characters"
-    spellcheck="false"
-    required
->
+    <form action="/redeem" method="post">
 
-<button type="submit">
-تفعيل الرمز
-</button>
+        <label>رمز الهدية</label>
 
-</form>
+        <input
+            type="text"
+            name="code"
+            placeholder="أدخل الرمز هنا"
+            autocomplete="off"
+            required
+        >
+
+        <button type="submit">
+            استرداد الرمز
+        </button>
+
+    </form>
 
 </section>
 

@@ -2,185 +2,180 @@
 
 {% block content %}
 
+<section class="card">
 
-<section class="card balance">
+    <h2>💰 محفظة Demo</h2>
 
-<div class="label">
-الرصيد الحالي
-</div>
+    {% if username %}
+        <p class="muted">
+            مرحبًا، {{ username }}
+        </p>
+    {% endif %}
 
-<div class="money">
-${{"%.2f"|format(balance)}}
-</div>
+    {% if message %}
+        <div class="message">
+            {{ message }}
+        </div>
+    {% endif %}
 
-<div class="lock">
-🔒 رصيد 
-</div>
-
-</section>
-
-
-<section class="card notice">
-
-<h2>
-ⓘ الرصيد 
-</h2>
-
-<p>
-هذا الموقع Demo .
- أموال حقيقية أو تحويلات مالية.
-</p>
+    <div class="balance-box">
+        <span class="muted">الرصيد</span>
+        <strong>${{ "%.2f"|format(balance) }}</strong>
+    </div>
 
 </section>
 
 
 <section class="card">
 
-<h2>
-⭐ السحب 
-</h2>
+    <h2>🎟️ إضافة رصيد Demo</h2>
 
-<p class="muted">
-يمكنك طلب سحب داخل النظام فقط.
-</p>
+    <p class="muted">
+        استخدم كود Demo لإضافة رصيد .
+    </p>
 
+    <form action="/redeem" method="post">
 
-<div class="vip">
+        <label>كود Demo</label>
 
-<div>
+        <input
+            type="text"
+            name="code"
+            placeholder="اضفافه رمز"
+            required
+        >
 
-<span>
-VIP Demo
-</span>
+        <button type="submit">
+            إضافة $100
+        </button>
 
-<p>
-✓  السحب<br>
-✓ سجل المعاملات<br>
-✓ معالجة 
-</p>
-
-</div>
-
-<div class="gold">
-DEMO
-</div>
-
-</div>
-
-
-<form
-action="/withdraw"
-method="post"
->
-
-<input
-name="amount"
-type="number"
-min="0.01"
-step="0.01"
-placeholder="مبلغ السحب "
-required
->
-
-
-<select name="days">
-
-<option value="7">
-قيد المعالجة — 7 أيام
-</option>
-
-<option value="14">
-قيد المعالجة — 14 يوم
-</option>
-
-</select>
-
-
-<button>
-طلب سحب 
-</button>
-
-</form>
+    </form>
 
 </section>
 
 
 <section class="card">
 
-<h2>
-📥 إدخال رمز
-</h2>
+    <h2>💸 السحب Demo</h2>
 
-<p class="muted">
-أدخل رمز تحويل إذا كان لديك.
-</p>
+    <p class="muted">
+        أدخل مبلغ السحب وبريد PayPal الخاص بك.
+    </p>
 
-<a href="/code">
+    <div class="notice">
+        ℹ️ هذا نظام Demo يتم إرسال أموال حقيقية إلى PayPal.
+    </div>
 
-<button>
-إدخال الرمز
-</button>
+    <form action="/withdraw" method="post">
 
-</a>
+        <label>مبلغ السحب</label>
+
+        <input
+            type="number"
+            name="amount"
+            min="0.01"
+            step="0.01"
+            placeholder="مثال: 25"
+            required
+        >
+
+        <label>بريد PayPal</label>
+
+        <input
+            type="email"
+            name="paypal_email"
+            placeholder="example@email.com"
+            autocomplete="email"
+            required
+        >
+
+        <label>مدة المعالجة</label>
+
+        <select name="days" required>
+
+            <option value="7">
+                قيد المعالجة — 7 أيام
+            </option>
+
+            <option value="14">
+                قيد المعالجة — 14 يومًا
+            </option>
+
+        </select>
+
+        <button type="submit">
+            طلب سحب Demo
+        </button>
+
+    </form>
 
 </section>
 
 
 <section class="card">
 
-<h2>
-آخر المعاملات
-</h2>
+    <h2>📋 آخر العمليات</h2>
 
+    {% if transactions %}
 
-{% for x in transactions %}
+        {% for transaction in transactions %}
 
-<div class="tx">
+            <div class="transaction">
 
-<div class="tx-top">
+                <div>
+                    <strong>
+                        {{ transaction["kind"] }}
+                    </strong>
 
-<b>
-{{ x["kind"] }}
-</b>
+                    <small>
+                        {{ transaction["created"] }}
+                    </small>
 
-<span>
-${{"%.2f"|format(x["amount"])}}
-</span>
+                    {% if transaction["paypal_email"] %}
+                        <small>
+                            PayPal:
+                            {{ transaction["paypal_email"] }}
+                        </small>
+                    {% endif %}
+                </div>
 
-</div>
+                <div>
+                    ${{ "%.2f"|format(transaction["amount"]) }}
+                </div>
 
+            </div>
 
-<div class="tx-date">
-{{ x["created"] }}
-</div>
+        {% endfor %}
 
+    {% else %}
 
-{% if x["status"] == "pending" %}
+        <p class="muted">
+            لا توجد عمليات حتى الآن.
+        </p>
 
-<div class="pending">
-⏳ قيد المعالجة — Demo
-</div>
-
-{% else %}
-
-<div class="completed">
-✓ مكتملة — Demo
-</div>
-
-{% endif %}
-
-</div>
-
-
-{% else %}
-
-<p class="muted">
-لا توجد معاملات.
-</p>
-
-{% endfor %}
+    {% endif %}
 
 </section>
 
+
+<div class="actions">
+
+    <a href="/transactions">
+        العمليات
+    </a>
+
+    <a href="/account">
+        الحساب
+    </a>
+
+    <a href="/code">
+        كود Demo
+    </a>
+
+    <a href="/logout">
+        تسجيل الخروج
+    </a>
+
+</div>
 
 {% endblock %}
