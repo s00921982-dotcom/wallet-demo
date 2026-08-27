@@ -2,89 +2,69 @@
 
 {% block content %}
 
-<!-- ===== Hero Balance ===== -->
+<!-- =========================
+     Balance
+========================= -->
+
 <section class="wallet-hero">
 
-    <div class="hero-top">
-        <div>
-            <span class="hero-label">إجمالي الرصيد</span>
+    <div class="hero-label">
+        إجمالي الرصيد
+    </div>
 
-            <div class="hero-balance">
-                ${{ "%.2f"|format(balance) }}
-            </div>
+    <div class="hero-balance">
+        ${{ "%.2f"|format(balance) }}
+    </div>
 
-            <div class="safe-status">
-                🛡️ رصيد Demo آمن
-            </div>
-        </div>
+    <div class="safe-status">
+        🛡️ رصيد Demo آمن
     </div>
 
 </section>
 
 
-<!-- ===== Quick Actions ===== -->
+<!-- =========================
+     Quick Actions
+========================= -->
+
 <section class="quick-actions">
 
     <a href="/transfer" class="quick-action">
-        <div class="quick-icon">➤</div>
-        <span>إرسال</span>
+        <span>➤</span>
+        <small>إرسال</small>
     </a>
 
     <a href="/transfer" class="quick-action">
-        <div class="quick-icon">⌘</div>
-        <span>طلب</span>
+        <span>↕</span>
+        <small>تحويل</small>
     </a>
 
     <a href="/code" class="quick-action">
-        <div class="quick-icon">＋</div>
-        <span>إضافة</span>
+        <span>＋</span>
+        <small>إضافة</small>
     </a>
 
-    <a href="/transfer" class="quick-action">
-        <div class="quick-icon">↕</div>
-        <span>تحويل</span>
+    <a href="/transactions" class="quick-action">
+        <span>⌁</span>
+        <small>النشاط</small>
     </a>
-
-</section>
-
-
-<!-- ===== Demo Card ===== -->
-<section class="demo-bank-card">
-
-    <div class="card-top">
-        <span class="card-brand">DEMO</span>
-        <span class="card-chip">▰</span>
-    </div>
-
-    <div class="card-number">
-        •••• &nbsp; •••• &nbsp; •••• &nbsp; 4821
-    </div>
-
-    <div class="card-bottom">
-
-        <div>
-            <small>صاحب البطاقة</small>
-            <strong>{{ username }}</strong>
-        </div>
-
-        <div>
-            <small>تنتهي</small>
-            <strong>12/30</strong>
-        </div>
-
-    </div>
 
 </section>
 
 
 {% if message %}
-<section class="message">
+
+<div class="message">
     {{ message }}
-</section>
+</div>
+
 {% endif %}
 
 
-<!-- ===== Earnings / Activity ===== -->
+<!-- =========================
+     Earnings / Activity
+========================= -->
+
 <section class="dashboard-grid">
 
     <div class="mini-card">
@@ -98,7 +78,7 @@
         </strong>
 
         <small>
-            مبلغ 
+            مبلغ
         </small>
 
     </div>
@@ -123,38 +103,162 @@
 </section>
 
 
-<!-- ===== Demo Wallet ===== -->
-<section class="asset-card">
+<!-- =========================
+     Demo Card
+========================= -->
 
-    <div class="asset-left">
+<section class="wallet-card-wrap">
 
-        <div class="asset-icon">
-            💰
+    <div
+        class="wallet-card"
+        id="walletCard"
+    >
+
+        <div class="card-shine"></div>
+
+
+        <div class="card-top">
+
+            <span>
+                DEMO
+            </span>
+
+            <span>
+                ◉
+            </span>
+
         </div>
 
-        <div class="asset-info">
 
-            <strong>
-                محفظة Demo
-            </strong>
+        <div class="card-chip">
+            ▦
+        </div>
 
-            <small>
-                الرصيد المتاح
-            </small>
+
+        <div class="card-number">
+            •••• &nbsp; •••• &nbsp; •••• &nbsp; 2048
+        </div>
+
+
+        <div class="card-bottom">
+
+            <div>
+
+                <small>
+                    حامل البطاقة
+                </small>
+
+                <strong>
+                    {{ username }}
+                </strong>
+
+            </div>
+
+
+            <div>
+
+                <small>
+                    الرصيد
+                </small>
+
+                <strong>
+                    ${{ "%.2f"|format(balance) }}
+                </strong>
+
+            </div>
 
         </div>
 
     </div>
 
-    <strong class="asset-money">
-        ${{ "%.2f"|format(balance) }}
-    </strong>
-
 </section>
 
 
-<!-- ===== Recent Activity ===== -->
-<section class="card activity-card">
+<!-- =========================
+     Card Overlay
+========================= -->
+
+<div
+    class="card-overlay"
+    id="cardOverlay"
+>
+
+    <div
+        class="expanded-card"
+        id="expandedCard"
+    >
+
+        <button
+            type="button"
+            class="card-close"
+            id="cardClose"
+        >
+            ×
+        </button>
+
+
+        <div class="expanded-card-top">
+
+            <span>
+                DEMO
+            </span>
+
+            <span>
+                ◉
+            </span>
+
+        </div>
+
+
+        <div class="expanded-chip">
+            ▦
+        </div>
+
+
+        <div class="expanded-number">
+            •••• &nbsp; •••• &nbsp; •••• &nbsp; 2048
+        </div>
+
+
+        <div class="expanded-info">
+
+            <div>
+
+                <small>
+                    حامل البطاقة
+                </small>
+
+                <strong>
+                    {{ username }}
+                </strong>
+
+            </div>
+
+
+            <div>
+
+                <small>
+                    الرصيد
+                </small>
+
+                <strong>
+                    ${{ "%.2f"|format(balance) }}
+                </strong>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================
+     Recent Activity
+========================= -->
+
+<section class="card">
 
     <div class="section-heading">
 
@@ -178,13 +282,17 @@
             <div class="activity-icon">
 
                 {% if transaction["kind"] == "transfer_received" %}
+
                     ↓
+
                 {% elif transaction["kind"] == "transfer_sent" %}
+
                     ↑
-                {% elif transaction["kind"] == "إضافة رصيد Demo" %}
-                    ＋
+
                 {% else %}
+
                     $
+
                 {% endif %}
 
             </div>
@@ -195,20 +303,21 @@
                 <strong>
 
                     {% if transaction["kind"] == "transfer_received" %}
+
                         تحويل مستلم
 
                     {% elif transaction["kind"] == "transfer_sent" %}
+
                         تحويل مرسل
 
-                    {% elif transaction["kind"] == "إضافة رصيد Demo" %}
-                        إضافة رصيد
-
                     {% else %}
+
                         {{ transaction["kind"] }}
 
                     {% endif %}
 
                 </strong>
+
 
                 <small>
                     {{ transaction["created"] }}
@@ -219,11 +328,7 @@
 
             <strong class="activity-amount">
 
-                {% if transaction["kind"] == "transfer_sent" %}
-                    −${{ "%.2f"|format(transaction["amount"]) }}
-                {% else %}
-                    +${{ "%.2f"|format(transaction["amount"]) }}
-                {% endif %}
+                ${{ "%.2f"|format(transaction["amount"]) }}
 
             </strong>
 
@@ -233,79 +338,69 @@
 
     {% else %}
 
-        <div class="empty-activity">
-
-            <div class="empty-icon">
-                ↕
-            </div>
-
-            <p>
-                لا توجد عمليات حتى الآن
-            </p>
-
-            <small>
-                ستظهر عمليات التحويل هنا
-            </small>
-
-        </div>
+        <p class="muted">
+            لا توجد عمليات حتى الآن.
+        </p>
 
     {% endif %}
 
 </section>
 
 
-<!-- ===== Demo Balance ===== -->
-<section class="card demo-card">
+<!-- =========================
+     Demo Code
+========================= -->
 
-    <div class="demo-card-content">
+<section class="card demo-code-card">
 
-        <div class="demo-card-icon">
-            🎁
-        </div>
+    <div>
 
-        <div>
+        <strong>
+            🎁 إضافة رصيد Demo
+        </strong>
 
-            <strong>
-                إضافة رصيد Demo
-            </strong>
-
-            <p class="muted">
-                استخدم رمز Demo لإضافة رصيد .
-            </p>
-
-        </div>
+        <p class="muted">
+            استخدم رمز Demo لإضافة رصيد .
+        </p>
 
     </div>
 
 
-    <a href="/code" class="secondary-button">
-        إضافة
+    <a
+        href="/code"
+        class="secondary-button"
+    >
+        إضافة رصيد
     </a>
 
 </section>
 
 
-<!-- ===== Withdraw ===== -->
+<!-- =========================
+     Withdraw
+========================= -->
+
 <section class="card">
 
-    <div class="section-heading">
+    <h2>
+        💸 السحب Demo
+    </h2>
 
-        <h2>
-            السحب Demo
-        </h2>
-
-    </div>
 
     <p class="muted">
-        مرحبٱ بكم نظامنا تحويل
+      مرحبا بك في نظامنا.
     </p>
 
 
-    <form action="/withdraw" method="post">
+    <form
+        action="/withdraw"
+        method="post"
+    >
 
         <label>
             مبلغ السحب
         </label>
+
 
         <input
             type="number"
@@ -320,6 +415,7 @@
         <label>
             بريد PayPal
         </label>
+
 
         <input
             type="email"
@@ -339,7 +435,10 @@
 </section>
 
 
-<!-- ===== Links ===== -->
+<!-- =========================
+     Old Actions
+========================= -->
+
 <div class="actions">
 
     <a href="/transactions">
@@ -359,5 +458,91 @@
     </a>
 
 </div>
+
+
+<!-- =========================
+     Card Animation
+========================= -->
+
+<script>
+
+const walletCard =
+    document.getElementById("walletCard");
+
+const cardOverlay =
+    document.getElementById("cardOverlay");
+
+const cardClose =
+    document.getElementById("cardClose");
+
+
+walletCard.addEventListener(
+    "click",
+    function () {
+
+        cardOverlay.classList.add("active");
+
+        document.body.style.overflow =
+            "hidden";
+
+    }
+);
+
+
+cardClose.addEventListener(
+    "click",
+    function () {
+
+        cardOverlay.classList.remove("active");
+
+        document.body.style.overflow =
+            "";
+
+    }
+);
+
+
+cardOverlay.addEventListener(
+    "click",
+    function (event) {
+
+        if (event.target === cardOverlay) {
+
+            cardOverlay.classList.remove(
+                "active"
+            );
+
+            document.body.style.overflow =
+                "";
+
+        }
+
+    }
+);
+
+
+document.addEventListener(
+    "keydown",
+    function (event) {
+
+        if (
+            event.key === "Escape" &&
+            cardOverlay.classList.contains("active")
+        ) {
+
+            cardOverlay.classList.remove(
+                "active"
+            );
+
+            document.body.style.overflow =
+                "";
+
+        }
+
+    }
+);
+
+</script>
+
 
 {% endblock %}
