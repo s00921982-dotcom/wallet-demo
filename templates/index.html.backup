@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+
+    <h2>💰 محفظة Demo</h2>
+
+    {% if username %}
+        <p class="muted">
+            مرحبًا، {{ username }}
+        </p>
+    {% endif %}
+
+    {% if message %}
+        <div class="message">
+            {{ message }}
+        </div>
+    {% endif %}
+
+    <div class="balance-box">
+        <span class="muted">الرصيد</span>
+        <strong>${{ "%.2f"|format(balance) }}</strong>
+    </div>
+
+</section>
+
+
+<section class="card">
+
+    <h2>🎟️ إضافة رصيد Demo</h2>
+
+    <p class="muted">
+        استخدم كود Demo لإضافة رصيد .
+    </p>
+
+    <form action="/redeem" method="post">
+
+        <label>كود Demo</label>
+
+        <input
+            type="text"
+            name="code"
+            placeholder="DEMO100"
+            required
+        >
+
+        <button type="submit">
+            إضافة $100
+        </button>
+
+    </form>
+
+</section>
+
+
+<section class="card">
+
+    <h2>💸 السحب Demo</h2>
+
+    <p class="muted">
+        أدخل مبلغ السحب وبريد PayPal الخاص بك.
+    </p>
+
+    <div class="notice">
+        ℹ️ هذا نظام Demo يتم إرسال أموال حقيقية إلى PayPal.
+    </div>
+
+    <form action="/withdraw" method="post">
+
+        <label>مبلغ السحب</label>
+
+        <input
+            type="number"
+            name="amount"
+            min="0.01"
+            step="0.01"
+            placeholder="مثال: 25"
+            required
+        >
+
+        <label>بريد PayPal</label>
+
+        <input
+            type="email"
+            name="paypal_email"
+            placeholder="example@email.com"
+            autocomplete="email"
+            required
+        >
+
+        <label>مدة المعالجة</label>
+
+        <select name="days" required>
+
+            <option value="7">
+                قيد المعالجة — 7 أيام
+            </option>
+
+            <option value="14">
+                قيد المعالجة — 14 يومًا
+            </option>
+
+        </select>
+
+        <button type="submit">
+            طلب سحب Demo
+        </button>
+
+    </form>
+
+</section>
+
+
+<section class="card">
+
+    <h2>📋 آخر العمليات</h2>
+
+    {% if transactions %}
+
+        {% for transaction in transactions %}
+
+            <div class="transaction">
+
+                <div>
+                    <strong>
+                        {{ transaction["kind"] }}
+                    </strong>
+
+                    <small>
+                        {{ transaction["created"] }}
+                    </small>
+
+                    {% if transaction["paypal_email"] %}
+                        <small>
+                            PayPal:
+                            {{ transaction["paypal_email"] }}
+                        </small>
+                    {% endif %}
+                </div>
+
+                <div>
+                    ${{ "%.2f"|format(transaction["amount"]) }}
+                </div>
+
+            </div>
+
+        {% endfor %}
+
+    {% else %}
+
+        <p class="muted">
+            لا توجد عمليات حتى الآن.
+        </p>
+
+    {% endif %}
+
+</section>
+
+
+<div class="actions">
+
+    <a href="/transactions">
+        العمليات
+    </a>
+
+    <a href="/account">
+        الحساب
+    </a>
+
+    <a href="/code">
+        كود Demo
+    </a>
+
+    <a href="/logout">
+        تسجيل الخروج
+    </a>
+
+</div>
+
+{% endblock %}

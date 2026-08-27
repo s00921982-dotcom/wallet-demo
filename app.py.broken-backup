@@ -1,0 +1,538 @@
+from flask import Flask, render_template, request, redirect, session
+from datetime import datetime, timedelta
+import sqlite3
+import secrets
+import hashlib
+
+app = Flask(__name__)
+
+app.secret_key = "demo-wallet-secret-change-this"
+
+DB = "wallet.db"
+DEMO_CODE = "DEMO100"
+
+
+def db():
+    c = sqlite3.connect(DB)
+    c.row_factory = sqlite3.Row
+    return c
+
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def init():
+    c = db()
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            balance REAL NOT NULL DEFAULT 0,
+            created TEXT NOT NULL
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            kind TEXT NOT NULL,
+            amount REAL NOT NULL,
+            status TEXT NOT NULL,
+            created TEXT NOT NULL,
+            complete TEXT
+        )
+    """)
+
+    c.commit()
+    c.close()
+
+
+def current_user():
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return None
+
+    c = db()
+
+    user = c.execute("""
+        SELECT *
+        FROM users
+        WHERE id=?
+    """, (user_id,)).fetchone()
+
+    c.close()
+
+    return user
+
+
+def require_login():
+    if not current_user():
+        return False
+
+    return True
+
+
+def update_status(user_id):
+    c = db()
+
+    now = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+    c.execute("""
+        UPDATE transactions
+        SET status='completed'
+        WHERE user_id=?
+        AND status='pending'
+        AND complete IS NOT NULL
+        AND complete <= ?
+    """, (user_id, now))
+
+    c.commit()
+    c.close()
+
+
+@app.route("/")
+def home():
+
+    user = current_user()
+
+    if not user:
+        return redirect("/login")
+
+    update_status(user["id"])
+
+    c = db()
+
+    user = c.execute("""
+        SELECT *
+        FROM users
+        WHERE id=?
+    """, (user["id"],)).fetchone()
+
+    transactions = c.execute("""
+        SELECT *
+        FROM transactions
+        WHERE user_id=?
+        ORDER BY id DESC
+        LIMIT 5
+    """, (user["id"],)).fetchall()
+
+    message = session.pop("message", None)
+
+    c.close()
+
+    return render_template(
+        "index.html",
+        balance=user["balance"],
+        username=user["username"],
+        transactions=transactions,
+        message=message
+    )
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+
+    if current_user():
+        return redirect("/")
+
+    if request.method == "POST":
+
+        username = request.form.get(
+            "username", ""
+        ).strip()
+
+        password = request.form.get(
+            "password", ""
+        )
+
+        confirm = request.form.get(
+            "confirm_password", ""
+        )
+
+        if len(username) < 3:
+            return render_template(
+                "register.html",
+                error="اسم المستخدم يجب أن يكون 3 أحرف على الأقل."
+            )
+
+        if len(password) < 6:
+            return render_template(
+                "register.html",
+                error="كلمة المرور يجب أن تكون 6 أحرف على الأقل."
+            )
+
+        if password != confirm:
+            return render_template(
+                "register.html",
+                error="كلمتا المرور غير متطابقتين."
+            )
+
+        c = db()
+
+        existing = c.execute("""
+            SELECT id
+            FROM users
+            WHERE username=?
+        """, (username,)).fetchone()
+
+        if existing:
+            c.close()
+
+            return render_template(
+                "register.html",
+                error="اسم المستخدم مستخدم بالفعل."
+            )
+
+        created = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+        password_hash = hash_password(password)
+
+        c.execute("""
+            INSERT INTO users
+            (username,password,balance,created)
+            VALUES(?,?,?,?)
+        """, (
+            username,
+            password_hash,
+            0,
+            created
+        ))
+
+        c.commit()
+
+        user_id = c.execute(
+            "SELECT last_insert_rowid()"
+        ).fetchone()[0]
+
+        c.close()
+
+        session["user_id"] = user_id
+
+        session["message"] = (
+            "تم إنشاء حساب Demo بنجاح."
+        )
+
+        return redirect("/")
+
+    return render_template(
+        "register.html"
+    )
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+
+    if current_user():
+        return redirect("/")
+
+    if request.method == "POST":
+
+        username = request.form.get(
+            "username", ""
+        ).strip()
+
+        password = request.form.get(
+            "password", ""
+        )
+
+        password_hash = hash_password(password)
+
+        c = db()
+
+        user = c.execute("""
+            SELECT *
+            FROM users
+            WHERE username=?
+            AND password=?
+        """, (
+            username,
+            password_hash
+        )).fetchone()
+
+        c.close()
+
+        if not user:
+
+            return render_template(
+                "login.html",
+                error="اسم المستخدم أو كلمة المرور غير صحيحة."
+            )
+
+        session.clear()
+
+        session["user_id"] = user["id"]
+
+        session["message"] = (
+            "تم تسجيل الدخول بنجاح."
+        )
+
+        return redirect("/")
+
+    return render_template(
+        "login.html"
+    )
+
+
+@app.route("/logout")
+def logout():
+
+    session.clear()
+
+    return redirect("/login")
+
+
+@app.post("/redeem")
+def redeem():
+
+    user = current_user()
+
+    if not user:
+        return redirect("/login")
+
+    code = request.form.get(
+        "code", ""
+    ).strip().upper()
+
+    if code != DEMO_CODE:
+
+        session["message"] = (
+            "الكود غير صحيح."
+        )
+
+        return redirect("/")
+
+    c = db()
+
+    existing = c.execute("""
+        SELECT id
+        FROM transactions
+        WHERE user_id=?
+        AND kind='إضافة رصيد Demo'
+        LIMIT 1
+    """, (user["id"],)).fetchone()
+
+    if existing:
+
+        session["message"] = (
+            "تم استخدام DEMO100 لهذا الحساب مسبقًا."
+        )
+
+        c.close()
+
+        return redirect("/")
+
+    c.execute("""
+        UPDATE users
+        SET balance=balance+100
+        WHERE id=?
+    """, (user["id"],))
+
+    c.execute("""
+        INSERT INTO transactions
+        (user_id,kind,amount,status,created)
+        VALUES(?,?,?,?,?)
+    """, (
+        user["id"],
+        "إضافة رصيد Demo",
+        100,
+        "completed",
+        datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+    ))
+
+    c.commit()
+    c.close()
+
+    session["message"] = (
+        "تمت إضافة 100$ إلى رصيد Demo الخاص بك."
+    )
+
+    return redirect("/")
+
+
+@app.post("/withdraw")
+def withdraw():
+
+    user = current_user()
+
+    if not user:
+        return redirect("/login")
+
+    try:
+
+        amount = float(
+            request.form.get(
+                "amount", "0"
+            )
+        )
+
+        days = int(
+            request.form.get(
+                "days", "7"
+            )
+        )
+
+    except ValueError:
+
+        session["message"] = (
+            "البيانات غير صحيحة."
+        )
+
+        return redirect("/")
+
+    if amount <= 0:
+
+        session["message"] = (
+            "أدخل مبلغًا صحيحًا."
+        )
+
+        return redirect("/")
+
+    if days not in (7, 14):
+
+        session["message"] = (
+            "اختر مدة صحيحة."
+        )
+
+        return redirect("/")
+
+    c = db()
+
+    user = c.execute("""
+        SELECT *
+        FROM users
+        WHERE id=?
+    """, (user["id"],)).fetchone()
+
+    if amount > user["balance"]:
+
+        session["message"] = (
+            "الرصيد غير كافٍ."
+        )
+
+        c.close()
+
+        return redirect("/")
+
+    created = datetime.now()
+
+    complete = created + timedelta(
+        days=days
+    )
+
+    c.execute("""
+        UPDATE users
+        SET balance=balance-?
+        WHERE id=?
+    """, (
+        amount,
+        user["id"]
+    ))
+
+    c.execute("""
+        INSERT INTO transactions
+        (user_id,kind,amount,status,created,complete)
+        VALUES(?,?,?,?,?,?)
+    """, (
+        user["id"],
+        "طلب سحب Demo",
+        amount,
+        "pending",
+        created.strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
+        complete.strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+    ))
+
+    c.commit()
+    c.close()
+
+    session["message"] = (
+        "تم إنشاء طلب السحب Demo."
+    )
+
+    return redirect("/")
+
+
+@app.route("/transactions")
+def transactions():
+
+    user = current_user()
+
+    if not user:
+        return redirect("/login")
+
+    update_status(user["id"])
+
+    c = db()
+
+    transactions = c.execute("""
+        SELECT *
+        FROM transactions
+        WHERE user_id=?
+        ORDER BY id DESC
+    """, (user["id"],)).fetchall()
+
+    c.close()
+
+    return render_template(
+        "transactions.html",
+        transactions=transactions
+    )
+
+
+@app.route("/account")
+def account():
+
+    user = current_user()
+
+    if not user:
+        return redirect("/login")
+
+    return render_template(
+        "account.html",
+        username=user["username"]
+    )
+
+
+@app.route("/code")
+def code_page():
+
+    if not require_login():
+        return redirect("/login")
+
+    return render_template(
+        "code.html"
+    )
+
+
+init()
+
+
+if __name__ == "__main__":
+
+    print("")
+    print("==============================")
+    print("       DEMO WALLET")
+    print("==============================")
+    print("http://127.0.0.1:5000")
+    print("==============================")
+    print("")
+
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=False
+    )

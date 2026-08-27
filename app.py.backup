@@ -1,0 +1,413 @@
+from flask import Flask, render_template, request, redirect, session
+from datetime import datetime, timedelta
+import sqlite3
+import secrets
+import re
+
+app = Flask(__name__)
+
+app.secret_key = "demo-wallet-secret-change-this"
+
+DB = "wallet.db"
+DEMO_CODE = "DEMO100"
+
+
+def db():
+    c = sqlite3.connect(DB)
+    c.row_factory = sqlite3.Row
+    return c
+
+
+def get_user_id():
+    if "user_id" not in session:
+        session["user_id"] = secrets.token_hex(16)
+
+    return session["user_id"]
+
+
+def init():
+    c = db()
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id TEXT PRIMARY KEY,
+            balance REAL NOT NULL DEFAULT 0
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            amount REAL NOT NULL,
+            status TEXT NOT NULL,
+            created TEXT NOT NULL,
+            complete TEXT,
+            paypal_email TEXT
+        )
+    """)
+
+    c.commit()
+    c.close()
+
+
+def ensure_transaction_column():
+    c = db()
+
+    columns = c.execute(
+        "PRAGMA table_info(transactions)"
+    ).fetchall()
+
+    names = [row["name"] for row in columns]
+
+    if "paypal_email" not in names:
+        c.execute("""
+            ALTER TABLE transactions
+            ADD COLUMN paypal_email TEXT
+        """)
+
+    c.commit()
+    c.close()
+
+
+def ensure_user():
+    user_id = get_user_id()
+
+    c = db()
+
+    user = c.execute(
+        "SELECT user_id FROM users WHERE user_id=?",
+        (user_id,)
+    ).fetchone()
+
+    if not user:
+        c.execute(
+            "INSERT INTO users(user_id,balance) VALUES(?,0)",
+            (user_id,)
+        )
+        c.commit()
+
+    c.close()
+
+    return user_id
+
+
+def update_status(user_id):
+    c = db()
+
+    now = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+    c.execute("""
+        UPDATE transactions
+        SET status='completed'
+        WHERE user_id=?
+        AND status='pending'
+        AND complete IS NOT NULL
+        AND complete <= ?
+    """, (user_id, now))
+
+    c.commit()
+    c.close()
+
+
+@app.route("/")
+def home():
+
+    user_id = ensure_user()
+    update_status(user_id)
+
+    c = db()
+
+    user = c.execute("""
+        SELECT balance
+        FROM users
+        WHERE user_id=?
+    """, (user_id,)).fetchone()
+
+    transactions = c.execute("""
+        SELECT *
+        FROM transactions
+        WHERE user_id=?
+        ORDER BY id DESC
+        LIMIT 5
+    """, (user_id,)).fetchall()
+
+    message = session.pop("message", None)
+
+    balance = user["balance"]
+
+    c.close()
+
+    return render_template(
+        "index.html",
+        balance=balance,
+        transactions=transactions,
+        message=message
+    )
+
+
+@app.post("/redeem")
+def redeem():
+
+    user_id = ensure_user()
+
+    code = request.form.get(
+        "code", ""
+    ).strip().upper()
+
+    if code != DEMO_CODE:
+
+        session["message"] = (
+            "الكود غير صحيح."
+        )
+
+        return redirect("/")
+
+    c = db()
+
+    existing = c.execute("""
+        SELECT id
+        FROM transactions
+        WHERE user_id=?
+        AND kind='إضافة رصيد Demo'
+        LIMIT 1
+    """, (user_id,)).fetchone()
+
+    if existing:
+
+        session["message"] = (
+            "تم استخدام كود DEMO100 لهذا الحساب مسبقًا."
+        )
+
+        c.close()
+        return redirect("/")
+
+    c.execute("""
+        UPDATE users
+        SET balance = balance + 100
+        WHERE user_id=?
+    """, (user_id,))
+
+    c.execute("""
+        INSERT INTO transactions
+        (user_id, kind, amount, status, created, paypal_email)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        user_id,
+        "إضافة رصيد Demo",
+        100,
+        "completed",
+        datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
+        None
+    ))
+
+    c.commit()
+    c.close()
+
+    session["message"] = (
+        "تمت إضافة 100$ إلى رصيد Demo الخاص بك."
+    )
+
+    return redirect("/")
+
+
+@app.post("/withdraw")
+def withdraw():
+
+    user_id = ensure_user()
+
+    try:
+        amount = float(
+            request.form.get("amount", "0")
+        )
+
+        days = int(
+            request.form.get("days", "7")
+        )
+
+    except ValueError:
+
+        session["message"] = (
+            "البيانات غير صحيحة."
+        )
+
+        return redirect("/")
+
+    paypal_email = request.form.get(
+        "paypal_email", ""
+    ).strip().lower()
+
+    if not paypal_email:
+
+        session["message"] = (
+            "أدخل بريد PayPal."
+        )
+
+        return redirect("/")
+
+    # تحقق بسيط من شكل البريد
+    email_pattern = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+
+    if not re.match(email_pattern, paypal_email):
+
+        session["message"] = (
+            "أدخل بريد PayPal صحيحًا."
+        )
+
+        return redirect("/")
+
+    if days not in (7, 14):
+
+        session["message"] = (
+            "اختر مدة صحيحة."
+        )
+
+        return redirect("/")
+
+    c = db()
+
+    user = c.execute("""
+        SELECT balance
+        FROM users
+        WHERE user_id=?
+    """, (user_id,)).fetchone()
+
+    balance = user["balance"]
+
+    if amount <= 0:
+
+        session["message"] = (
+            "أدخل مبلغًا صحيحًا."
+        )
+
+        c.close()
+        return redirect("/")
+
+    if amount > balance:
+
+        session["message"] = (
+            "الرصيد غير كافٍ."
+        )
+
+        c.close()
+        return redirect("/")
+
+    created = datetime.now()
+
+    complete = created + timedelta(
+        days=days
+    )
+
+    # خصم المبلغ من رصيد Demo فقط
+    c.execute("""
+        UPDATE users
+        SET balance = balance - ?
+        WHERE user_id=?
+    """, (amount, user_id))
+
+    # حفظ طلب السحب وبريد PayPal
+    c.execute("""
+        INSERT INTO transactions
+        (
+            user_id,
+            kind,
+            amount,
+            status,
+            created,
+            complete,
+            paypal_email
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        user_id,
+        "طلب سحب Demo",
+        amount,
+        "pending",
+        created.strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
+        complete.strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
+        paypal_email
+    ))
+
+    c.commit()
+    c.close()
+
+    session["message"] = (
+        "تم إنشاء طلب السحب Demo. "
+        "لن يتم إرسال أموال  إلى PayPal."
+    )
+
+    return redirect("/")
+
+
+@app.route("/transactions")
+def transactions():
+
+    user_id = ensure_user()
+
+    update_status(user_id)
+
+    c = db()
+
+    transactions = c.execute("""
+        SELECT *
+        FROM transactions
+        WHERE user_id=?
+        ORDER BY id DESC
+    """, (user_id,)).fetchall()
+
+    c.close()
+
+    return render_template(
+        "transactions.html",
+        transactions=transactions
+    )
+
+
+@app.route("/account")
+def account():
+
+    ensure_user()
+
+    return render_template(
+        "account.html"
+    )
+
+
+@app.route("/code")
+def code_page():
+
+    ensure_user()
+
+    return render_template(
+        "code.html"
+    )
+
+
+init()
+ensure_transaction_column()
+
+
+if __name__ == "__main__":
+
+    print("")
+    print("==============================")
+    print("       DEMO WALLET")
+    print("==============================")
+    print("http://127.0.0.1:5000")
+    print("==============================")
+    print("")
+
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=False
+    )
