@@ -363,7 +363,7 @@ def redeem():
         ""
     ).strip().upper()
 
-    if code != DEMO_CODE:
+    if code != "DEMO20000":
 
         session["message"] = (
             "الكود غير صحيح."
@@ -377,7 +377,7 @@ def redeem():
         SELECT id
         FROM transactions
         WHERE user_id=?
-        AND kind='إضافة رصيد Demo'
+        AND kind='demo_code_20000'
         LIMIT 1
     """, (user_id,)).fetchone()
 
@@ -386,14 +386,14 @@ def redeem():
         c.close()
 
         session["message"] = (
-            "تم استخدام كود DEMO100 لهذا الحساب مسبقًا."
+            "تم استخدام كود DEMO20000 لهذا الحساب مسبقًا."
         )
 
         return redirect("/")
 
     c.execute("""
         UPDATE users
-        SET balance = balance + 100
+        SET balance = balance + 20000
         WHERE user_id=?
     """, (user_id,))
 
@@ -403,8 +403,8 @@ def redeem():
         VALUES (?, ?, ?, ?, ?)
     """, (
         user_id,
-        "إضافة رصيد Demo",
-        100,
+        "demo_code_20000",
+        20000,
         "completed",
         datetime.now().strftime(
             "%Y-%m-%d %H:%M:%S"
@@ -415,7 +415,7 @@ def redeem():
     c.close()
 
     session["message"] = (
-        "تمت إضافة 100$ إلى رصيد Demo الخاص بك."
+        "تمت إضافة 20,000$ إلى رصيد Demo الخاص بك."
     )
 
     return redirect("/")
@@ -723,10 +723,11 @@ def transfer():
 
         c.commit()
 
-    except Exception:
+    except Exception as e:
         c.rollback()
         c.close()
-        session["message"] = "حدث خطأ أثناء التحويل."
+        print("TRANSFER ERROR:", repr(e))
+        session["message"] = f"خطأ في التحويل: {e}"
         return redirect("/transfer")
 
     c.close()
@@ -782,6 +783,7 @@ def code_page():
     return render_template(
         "code.html"
     )
+
 
 
 # =========================
